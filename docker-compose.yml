@@ -8,7 +8,8 @@ services:
     volumes:
       - "zookeeper_data:/bitnami"
     environment:
-      ALLOW_ANONYMOUS_LOGIN: yes
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+
   kafka:
     image: docker.io/bitnami/kafka:3
     depends_on:
@@ -19,9 +20,57 @@ services:
       - "kafka_data:/bitnami"
     environment:
       KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      ALLOW_PLAINTEXT_LISTENER: yes
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+
+  kafka-schema-registry:
+    image: confluentinc/cp-schema-registry:5.0.0
     depends_on:
-      - zookeeper
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+      SCHEMA_REGISTRY_HOST_NAME: "kafka-schema-registry"
+      SCHEMA_REGISTRY_LISTENERS: "http://kafka-schema-registry:8081"
+
+  kafka-connect:
+    image: mazahakq/kafka-connect:latest 
+    build:
+      context: ./
+      dockerfile: ./kafka-connect/Dockerfile
+    depends_on:
+      - kafka
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka:9092
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: "home"
+      CONNECT_CONFIG_STORAGE_TOPIC: "home-config"
+      CONNECT_OFFSET_STORAGE_TOPIC: "home-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC: "home-status"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: "io.confluent.connect.avro.AvroConverter"
+      CONNECT_VALUE_CONVERTER: "io.confluent.connect.avro.AvroConverter"
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://kafka-schema-registry:8081"
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: "http://kafka-schema-registry:8081"
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "localhost"
+      CONNECT_LOG4J_ROOT_LOGLEVEL: DEBUG
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/etc/kafka-connect/jars"
+
+  kafka-connect-ui:
+    image: landoop/kafka-connect-ui:0.9.7
+    depends_on:
+      - kafka-connect
+    ports:
+      - "8000:8000"
+    environment:
+      CONNECT_URL: "http://kafka-connect:8083"
+   
   kafka-ui:
     image: provectuslabs/kafka-ui:latest 
     depends_on:
@@ -32,6 +81,7 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+
   kafka-manager:
     image: mazahakq/kafka-manager:latest 
     build:
@@ -42,13 +92,37 @@ services:
     ports:
       - "9000:9000"
     environment:
-      KAFKA_MANAGER_AUTH_ENABLED: true
+      KAFKA_MANAGER_AUTH_ENABLED: "true"
       KAFKA_MANAGER_USERNAME    : manager
       KAFKA_MANAGER_PASSWORD    : manager
       ZK_HOSTS                  : zookeeper:2181
+
+  mysql:
+    image: mysql:8.0.27
+    ports:
+      - "3306:3306"
+    volumes:
+      - "mysql_data:/var/lib/mysql"
+    environment:
+      MYSQL_ROOT_PASSWORD: confluent
+      MYSQL_USER: confluent
+      MYSQL_PASSWORD: confluent
+      MYSQL_DATABASE: confluent
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8070:8080
 
 volumes:
   zookeeper_data:
     driver: local
   kafka_data:
+    driver: local
+  mysql_data:
     driver: local
