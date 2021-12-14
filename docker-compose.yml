@@ -32,6 +32,10 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
       SCHEMA_REGISTRY_HOST_NAME: "kafka-schema-registry"
       SCHEMA_REGISTRY_LISTENERS: "http://kafka-schema-registry:8081"
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "8081"]
+      timeout: 20s
+      retries: 10
 
   kafka-connect:
     image: mazahakq/kafka-connect:latest 
@@ -61,6 +65,10 @@ services:
       CONNECT_REST_ADVERTISED_HOST_NAME: "localhost"
       CONNECT_LOG4J_ROOT_LOGLEVEL: DEBUG
       CONNECT_PLUGIN_PATH: "/usr/share/java,/etc/kafka-connect/jars"
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "8083"]
+      timeout: 20s
+      retries: 10
 
   kafka-connect-ui:
     image: landoop/kafka-connect-ui:0.9.7
@@ -69,8 +77,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      CONNECT_URL: "http://kafka-connect:8083"
-   
+      CONNECT_URL: "http://kafka-connect:8083;DEV,http://kafka-connect:8083;PROD"
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "8000"]
+      timeout: 20s
+      retries: 10
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest 
     depends_on:
@@ -81,6 +93,10 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "8080"]
+      timeout: 20s
+      retries: 10
 
   kafka-manager:
     image: mazahakq/kafka-manager:latest 
@@ -118,6 +134,10 @@ services:
     restart: always
     ports:
       - 8070:8080
+    healthcheck:
+      test: ["CMD", "nc", "-vz", "localhost", "8080"]
+      timeout: 20s
+      retries: 10
 
 volumes:
   zookeeper_data:
