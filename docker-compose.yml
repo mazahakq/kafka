@@ -1,53 +1,246 @@
 version: "3.9"
 
 services:
-  zookeeper:
-    image: docker.io/bitnami/zookeeper:3.7
+
+  zookeeper-1:
+    image: bitnami/zookeeper:3.8.0
+    hostname: zookeeper-1
+    container_name: zookeeper-1
     ports:
       - "2181:2181"
+      - "2181"
+      - "2888"
+      - "3888"
     volumes:
-      - "zookeeper_data:/bitnami"
+      - "zookeeper_data_1:/bitnami/zookeeper"
     environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOO_SERVER_ID: 1
+      ZOO_PORT_NUMBER: 2181
+      ZOO_SERVERS: "0.0.0.0:2888:3888,zookeeper-2:2888:3888,zookeeper-3:2888:3888"
+      ZOO_ENABLE_AUTH: no
+      ZOO_ENABLE_ADMIN_SERVER: no
+      ALLOW_ANONYMOUS_LOGIN: yes
+    networks:
+      - kafka
 
-  kafka:
-    image: docker.io/bitnami/kafka:3
+  zookeeper-2:
+    image: bitnami/zookeeper:3.8.0
+    hostname: zookeeper-2
+    container_name: zookeeper-2
+    ports:
+      - "2181"
+      - "2888"
+      - "3888"
+    volumes:
+      - "zookeeper_data_2:/bitnami/zookeeper"
+    environment:
+      ZOO_SERVER_ID: 2
+      ZOO_PORT_NUMBER: 2181
+      ZOO_SERVERS: "zookeeper-1:2888:3888,0.0.0.0:2888:3888,zookeeper-3:2888:3888"
+      ZOO_ENABLE_AUTH: no
+      ZOO_ENABLE_ADMIN_SERVER: no
+      ALLOW_ANONYMOUS_LOGIN: yes
+    networks:
+      - kafka
+
+  zookeeper-3:
+    image: bitnami/zookeeper:3.8.0
+    hostname: zookeeper-3
+    container_name: zookeeper-3
+    ports:
+      - "2181"
+      - "2888"
+      - "3888"
+    volumes:
+      - "zookeeper_data_3:/bitnami/zookeeper"
+    environment:
+      ZOO_SERVER_ID: 3
+      ZOO_PORT_NUMBER: 2181
+      ZOO_SERVERS: "zookeeper-1:2888:3888,zookeeper-2:2888:3888,0.0.0.0:2888:3888"
+      ZOO_ENABLE_AUTH: no
+      ZOO_ENABLE_ADMIN_SERVER: no
+      ALLOW_ANONYMOUS_LOGIN: yes
+    networks:
+      - kafka
+
+  zoonavigator:
+    image: elkozmon/zoonavigator:latest
+    hostname: zoonavigator
+    container_name: zoonavigator
     depends_on:
-      - zookeeper
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    ports:
+      - "9002:9000"
+    environment:
+      HTTP_PORT: 9000
+    networks:
+      - kafka
+
+  kafka-1:
+    image: bitnami/kafka:3.0.0
+    hostname: kafka-1
+    container_name: kafka-1
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
     ports:
       - "9092:9092"
+      - "39093"
     volumes:
-      - "kafka_data:/bitnami"
+      - "kafka_data_1:/bitnami/kafka"
     environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_BROKER_ID: 1
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
       ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:39093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "INTERNAL://:9092,EXTERNAL://kafka-1:39093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CFG_NUM_PARTITIONS: "3"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "3"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "3"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "3"
+    networks:
+      - kafka
+
+  kafka-2:
+    image: bitnami/kafka:3.0.0
+    hostname: kafka-2
+    container_name: kafka-2
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    ports:
+      - "9092"
+      - "39093"
+    volumes:
+      - "kafka_data_2:/bitnami/kafka"
+    environment:
+      KAFKA_CFG_BROKER_ID: 2
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:39093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "INTERNAL://:9092,EXTERNAL://kafka-2:39093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CFG_NUM_PARTITIONS: "3"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "3"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "3"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "3"
+    networks:
+      - kafka
+
+  kafka-3:
+    image: bitnami/kafka:3.0.0
+    hostname: kafka-3
+    container_name: kafka-3
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    ports:
+      - "9092"
+      - "39093"
+    volumes:
+      - "kafka_data_3:/bitnami/kafka"
+    environment:
+      KAFKA_CFG_BROKER_ID: 3
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_LISTENERS: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:39093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "INTERNAL://:9092,EXTERNAL://kafka-3:39093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CFG_NUM_PARTITIONS: "3"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "3"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "3"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "3"
+    networks:
+      - kafka
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:3.30.0
+    hostname: kafdrop
+    container_name: kafdrop
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    ports:
+      - "9001:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+    networks:
+      - kafka
+
+  kafka-manager:
+    image: mazahakq/kafka-manager:latest 
+    hostname: kafka-manager
+    container_name: kafka-manager
+    command: -Dpidfile.path=/dev/null
+    build:
+      context: ./
+      dockerfile: ./kafka-manager/Dockerfile
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_MANAGER_AUTH_ENABLED: "true"
+      KAFKA_MANAGER_USERNAME: manager
+      KAFKA_MANAGER_PASSWORD: manager
+      ZK_HOSTS: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+    networks:
+      - kafka
 
   kafka-schema-registry:
-    image: confluentinc/cp-schema-registry:5.0.0
+    image: confluentinc/cp-schema-registry:5.5.9
+    hostname: kafka-schema-registry
+    container_name: kafka-schema-registry
     depends_on:
-      - kafka
+      - kafka-1
+      - kafka-2
+      - kafka-3
     ports:
       - "8081:8081"
     environment:
-      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://kafka-1:9092,PLAINTEXT://kafka-2:9092,PLAINTEXT://kafka-3:9092"
       SCHEMA_REGISTRY_HOST_NAME: "kafka-schema-registry"
       SCHEMA_REGISTRY_LISTENERS: "http://kafka-schema-registry:8081"
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_MECHANISM: "PLAIN"
     healthcheck:
       test: ["CMD", "nc", "-vz", "localhost", "8081"]
       timeout: 20s
       retries: 10
+    networks:
+      - kafka
 
   kafka-connect:
     image: mazahakq/kafka-connect:latest 
+    hostname: kafka-connect
+    container_name: kafka-connect
     build:
       context: ./
       dockerfile: ./kafka-connect/Dockerfile
     depends_on:
-      - kafka
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - kafka-schema-registry
     ports:
       - "8083:8083"
     environment:
-      CONNECT_BOOTSTRAP_SERVERS: kafka:9092
+      CONNECT_BOOTSTRAP_SERVERS: "PLAINTEXT://kafka-1:9092,PLAINTEXT://kafka-2:9092,PLAINTEXT://kafka-3:9092"
       CONNECT_REST_PORT: 8083
       CONNECT_GROUP_ID: "home"
       CONNECT_CONFIG_STORAGE_TOPIC: "home-config"
@@ -69,52 +262,55 @@ services:
       test: ["CMD", "nc", "-vz", "localhost", "8083"]
       timeout: 20s
       retries: 10
+    networks:
+      - kafka
+      - backend
 
   kafka-connect-ui:
     image: landoop/kafka-connect-ui:0.9.7
+    hostname: kafka-connect-ui
+    container_name: kafka-connect-ui
     depends_on:
       - kafka-connect
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       CONNECT_URL: "http://kafka-connect:8083;DEV,http://kafka-connect:8083;PROD"
     healthcheck:
       test: ["CMD", "nc", "-vz", "localhost", "8000"]
       timeout: 20s
       retries: 10
+    networks:
+      - kafka
 
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest 
+    image: provectuslabs/kafka-ui:latest
+    hostname: kafka-ui
+    container_name: kafka-ui
     depends_on:
-      - kafka
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
     ports:
-      - "8080:8080"
+      - "8002:8080"
     environment:
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_ZOOKEEPER: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "PLAINTEXT://kafka-1:9092,PLAINTEXT://kafka-2:9092,PLAINTEXT://kafka-3:9092"
     healthcheck:
       test: ["CMD", "nc", "-vz", "localhost", "8080"]
       timeout: 20s
       retries: 10
-
-  kafka-manager:
-    image: mazahakq/kafka-manager:latest 
-    build:
-      context: ./
-      dockerfile: ./kafka-manager/Dockerfile
-    depends_on:
+    networks:
       - kafka
-    ports:
-      - "9000:9000"
-    environment:
-      KAFKA_MANAGER_AUTH_ENABLED: "true"
-      KAFKA_MANAGER_USERNAME    : manager
-      KAFKA_MANAGER_PASSWORD    : manager
-      ZK_HOSTS                  : zookeeper:2181
 
   mysql:
     image: mysql:8.0.27
+    hostname: mysql
+    container_name: mysql
     ports:
       - "3306:3306"
     volumes:
@@ -128,21 +324,41 @@ services:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
-
+    networks:
+      - backend
+      
   adminer:
     image: adminer
+    hostname: adminer
+    container_name: adminer
     restart: always
     ports:
-      - 8070:8080
+      - "8070:8080"
     healthcheck:
       test: ["CMD", "nc", "-vz", "localhost", "8080"]
       timeout: 20s
       retries: 10
+    networks:
+      - backend
 
 volumes:
-  zookeeper_data:
+  zookeeper_data_1:
     driver: local
-  kafka_data:
+  zookeeper_data_2:
+    driver: local
+  zookeeper_data_3:
+    driver: local
+  kafka_data_1:
+    driver: local
+  kafka_data_2:
+    driver: local
+  kafka_data_3:
     driver: local
   mysql_data:
     driver: local
+    
+networks:
+  kafka:
+    driver: bridge
+  backend:
+    driver: bridge
