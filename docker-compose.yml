@@ -67,16 +67,21 @@ services:
     image: elkozmon/zoonavigator:latest
     hostname: zoonavigator
     container_name: zoonavigator
-    depends_on:
-      - zookeeper-1
-      - zookeeper-2
-      - zookeeper-3
     ports:
       - "9002:9000"
     environment:
       HTTP_PORT: 9000
     networks:
       - kafka
+
+#  hue:
+#    image: gethue/hue:latest
+#    hostname: hue
+#    container_name: hue
+#    ports:
+#      - "8888:8888"
+#    networks:
+#      - kafka
 
   kafka-1:
     image: bitnami/kafka:3.0.0

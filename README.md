@@ -1,6 +1,6 @@
 Ресурсы:  
-http://localhost:2181 - Zookeeper
-http://localhost:9002 - zoonavigator 
+http://localhost:2181 - Zookeeper  
+http://localhost:9002 - zoonavigator  
 localhost:9092 - Kafka  
 http://localhost:8081 - schema-registry  
 http://localhost:8083 - kafka-connect  
